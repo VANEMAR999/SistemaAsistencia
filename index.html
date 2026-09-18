@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Asistencia RENOVA</title>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .contenedor {
+            max-width: 400px;
+            margin: 30px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 3px 15px rgba(0,0,0,.15);
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        p {
+            line-height: 1.5;
+        }
+
+        input,
+        button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        button {
+            background: #222;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        video {
+            width: 100%;
+            margin-top: 15px;
+            border-radius: 10px;
+            background: black;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .empleado-info {
+            background: #f0f7f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .empleado-info h3 {
+            margin-top: 0;
+        }
+
+        .exito {
+            background: #dff5df;
+            color: #176b17;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .error {
+            background: #ffe1e1;
+            color: #a00000;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .cargando {
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+        }
+
+        .separador {
+            margin-top: 20px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="contenedor">
+
+    <h1>Registro de Asistencia</h1>
+
+    <p>
+        Ingresa tu número de empleado
+    </p>
+
+    <input
+        type="text"
+        id="empleado"
+        placeholder="Ejemplo: I001"
+        autocomplete="off"
+    >
+
+    <button
+        id="btnContinuar"
+        onclick="buscarEmpleado()"
+    >
+        Continuar
+    </button>
+
+    <div id="resultado"></div>
+
+</div>
+
+
+<script>
+
+
+// =====================================================
+// CONFIGURACIÓN DE SUPABASE
+// =====================================================
+
+const SUPABASE_URL =
+    "https://mocbkgmtbvdxqpjtvxtx.supabase.co";
+
+
+// Publishable Key de Supabase
+// NO utilizar sb_secret_
+
+const SUPABASE_KEY =
+    "sb_publishable_rUrmxJUbtp5o2fWJvzcPcg_q84RuZza";
+
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+// =====================================================
+// VARIABLES
+// =====================================================
+
+let empleadoActual = null;
+
+let streamActual = null;
+
+
+// =====================================================
+// BUSCAR EMPLEADO
+// =====================================================
+
+async function buscarEmpleado() {
+
+    const input =
+        document.getElementById("empleado");
+
+    const boton =
+        document.getElementById("btnContinuar");
+
+    const resultado =
+        document.getElementById("resultado");
+
+
+    const empleado =
+        input.value.trim().toUpperCase();
+
+
+    // Verificar que escribió algo
+
+    if (empleado === "") {
+
+        alert("Ingresa tu número de empleado");
+
+        input.focus();
+
+        return;
+    }
+
+
+    // Desactivar botón mientras busca
+
+    boton.disabled = true;
+
+
+    resultado.innerHTML =
+        "<div class='cargando'>🔎 Buscando empleado...</div>";
+
+
+    try {
+
+        // Buscar en Supabase
+
+        const { data, error } =
+
+            await supabaseClient
+
+                .from("empleados")
+
+                .select(
+                    "id, empleado_id, nombre, activo"
+                )
+
+                .eq(
+                    "empleado_id",
+                    empleado
+                )
+
+                .maybeSingle();
+
+
+        // Error de Supabase
+
+        if (error) {
+
+            console.error(
+                "Error Supabase:",
+                error
+            );
+
+            resultado.innerHTML =
+
+                "<div class='error'>" +
+
+                "<strong>❌ Error al consultar.</strong>" +
+
+                "<br><br>" +
+
+                error.message +
+
+                "</div>";
+
+            boton.disabled = false;
+
+            return;
+        }
+
+
+        // Empleado no encontrado
+
+        if (!data) {
+
+            resultado.innerHTML =
+
+                "<div class='error'>" +
+
+                "<strong>❌ Empleado no encontrado.</strong>" +
+
+                "<br><br>" +
+
+                "Verifica el número de empleado." +
+
+                "</div>";
+
+            boton.disabled = false;
+
+            return;
+        }
+
+
+        // Empleado inactivo
+
+        if (data.activo !== true) {
+
+            resultado.innerHTML =
+
+                "<div class='error'>" +
+
+                "<strong>❌ Empleado inactivo.</strong>" +
+
+                "<br><br>" +
+
+                "No es posible registrar la asistencia." +
+
+                "</div>";
+
+            boton.disabled = false;
+
+            return;
+        }
+
+
+        // Guardar empleado actual
+
+        empleadoActual = data;
+
+
+        // Mostrar empleado
+
+        resultado.innerHTML =
+
+            "<div class='empleado-info'>" +
+
+            "<h3>✅ Empleado encontrado</h3>" +
+
+            "<p>" +
+
+            "<strong>Número:</strong> " +
+
+            escaparHTML(data.empleado_id) +
+
+            "</p>" +
+
+            "<p>" +
+
+            "<strong>Nombre:</strong> " +
+
+            escaparHTML(data.nombre) +
+
+            "</p>" +
+
+            "<p>" +
+
+            "📸 Colócate frente a la cámara " +
+
+            "y toma tu fotografía." +
+
+            "</p>" +
+
+            "</div>" +
+
+            "<video " +
+
+            "id='video' " +
+
+            "autoplay " +
+
+            "playsinline>" +
+
+            "</video>" +
+
+            "<canvas id='canvas'></canvas>" +
+
+            "<button " +
+
+            "id='btnFoto' " +
+
+            "onclick='tomarFoto()'>" +
+
+            "📸 Tomar fotografía" +
+
+            "</button>";
+
+
+        // Abrir cámara
+
+        await iniciarCamara();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        resultado.innerHTML =
+
+            "<div class='error'>" +
+
+            "❌ Ocurrió un error inesperado." +
+
+            "</div>";
+
+        boton.disabled = false;
+    }
+
+}
+
+
+// =====================================================
+// INICIAR CÁMARA
+// =====================================================
+
+async function iniciarCamara() {
+
+    const video =
+        document.getElementById("video");
+
+
+    if (!video) {
+        return;
+    }
+
+
+    try {
+
+        // Solicitar cámara
+
+        streamActual =
+
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+
+                    video: {
+                        facingMode: "user"
+                    },
+
+                    audio: false
+
+                });
+
+
+        // Mostrar cámara
+
+        video.srcObject =
+            streamActual;
+
+
+    } catch (error) {
+
+        console.error(
+            "Error cámara:",
+            error
+        );
+
+
+        document.getElementById(
+            "resultado"
+        ).innerHTML +=
+
+            "<div class='error'>" +
+
+            "<strong>❌ No se pudo abrir la cámara.</strong>" +
+
+            "<br><br>" +
+
+            "Debes permitir el acceso a la cámara " +
+
+            "para registrar la asistencia." +
+
+            "</div>";
+
+    }
+
+}
+
+
+// =====================================================
+// TOMAR FOTOGRAFÍA
+// =====================================================
+
+async function tomarFoto() {
+
+    if (!empleadoActual) {
+
+        alert(
+            "Primero busca un empleado."
+        );
+
+        return;
+    }
+
+
+    const video =
+        document.getElementById("video");
+
+    const canvas =
+        document.getElementById("canvas");
+
+    const boton =
+        document.getElementById("btnFoto");
+
+
+    if (!video || !canvas) {
+
+        alert(
+            "La cámara todavía no está lista."
+        );
+
+        return;
+    }
+
+
+    // Verificar que la cámara tenga imagen
+
+    if (
+        video.videoWidth === 0 ||
+        video.videoHeight === 0
+    ) {
+
+        alert(
+            "Espera un momento a que la cámara se active."
+        );
+
+        return;
+    }
+
+
+    // Desactivar botón
+
+    boton.disabled = true;
+
+    boton.innerText =
+        "⏳ Registrando...";
+
+
+    // =================================================
+    // CAPTURAR FOTO
+    // =================================================
+
+    canvas.width =
+        video.videoWidth;
+
+    canvas.height =
+        video.videoHeight;
+
+
+    const contexto =
+        canvas.getContext("2d");
+
+
+    contexto.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    // =================================================
+    // CREAR NOMBRE DE FOTO
+    // =================================================
+
+    const ahora =
+        new Date();
+
+
+    const año =
+        ahora.getFullYear();
+
+    const mes =
+        String(
+            ahora.getMonth() + 1
+        ).padStart(2, "0");
+
+    const dia =
+        String(
+            ahora.getDate()
+        ).padStart(2, "0");
+
+    const hora =
+        String(
+            ahora.getHours()
+        ).padStart(2, "0");
+
+    const minutos =
+        String(
+            ahora.getMinutes()
+        ).padStart(2, "0");
+
+    const segundos =
+        String(
+            ahora.getSeconds()
+        ).padStart(2, "0");
+
+
+    const nombreFoto =
+
+        empleadoActual.empleado_id +
+
+        "_" +
+
+        año +
+
+        "-" +
+
+        mes +
+
+        "-" +
+
+        dia +
+
+        "_" +
+
+        hora +
+
+        minutos +
+
+        segundos +
+
+        ".jpg";
+
+
+    // =================================================
+    // GUARDAR REGISTRO EN ASISTENCIA
+    // =================================================
+
+    const { data, error } =
+
+        await supabaseClient
+
+            .from("asistencia")
+
+            .insert([{
+
+                empleado_id:
+                    empleadoActual.empleado_id,
+
+                tipo:
+                    "Entrada",
+
+                fecha_hora:
+                    new Date().toISOString(),
+
+                foto_url:
+                    nombreFoto
+
+            }])
+
+            .select();
+
+
+    // =================================================
+    // ERROR
+    // =================================================
+
+    if (error) {
+
+        console.error(
+            "Error al guardar:",
+            error
+        );
+
+
+        document.getElementById(
+            "resultado"
+        ).innerHTML =
+
+            "<div class='error'>" +
+
+            "<strong>❌ No se pudo registrar la asistencia.</strong>" +
+
+            "<br><br>" +
+
+            error.message +
+
+            "</div>";
+
+
+        boton.disabled = false;
+
+        boton.innerText =
+            "📸 Tomar fotografía";
+
+        return;
+    }
+
+
+    // =================================================
+    // DETENER CÁMARA
+    // =================================================
+
+    detenerCamara();
+
+
+    // =================================================
+    // MOSTRAR ÉXITO
+    // =================================================
+
+    document.getElementById(
+        "resultado"
+    ).innerHTML =
+
+        "<div class='exito'>" +
+
+        "<h3>✅ Asistencia registrada</h3>" +
+
+        "<p>" +
+
+        "<strong>Empleado:</strong><br>" +
+
+        escaparHTML(
+            empleadoActual.nombre
+        ) +
+
+        "</p>" +
+
+        "<p>" +
+
+        "<strong>Número:</strong> " +
+
+        escaparHTML(
+            empleadoActual.empleado_id
+        ) +
+
+        "</p>" +
+
+        "<p>" +
+
+        "<strong>Tipo:</strong> Entrada" +
+
+        "</p>" +
+
+        "<p>" +
+
+        "<strong>Fecha y hora:</strong><br>" +
+
+        new Date().toLocaleString(
+            "es-MX"
+        ) +
+
+        "</p>" +
+
+        "</div>" +
+
+        "<button " +
+
+        "onclick='nuevoRegistro()'>" +
+
+        "🔄 Registrar otra persona" +
+
+        "</button>";
+
+
+}
+
+
+// =====================================================
+// DETENER CÁMARA
+// =====================================================
+
+function detenerCamara() {
+
+    if (streamActual) {
+
+        streamActual
+            .getTracks()
+            .forEach(
+                track => track.stop()
+            );
+
+        streamActual = null;
+    }
+
+}
+
+
+// =====================================================
+// NUEVO REGISTRO
+// =====================================================
+
+function nuevoRegistro() {
+
+    detenerCamara();
+
+
+    empleadoActual = null;
+
+
+    document.getElementById(
+        "resultado"
+    ).innerHTML = "";
+
+
+    document.getElementById(
+        "empleado"
+    ).value = "";
+
+
+    document.getElementById(
+        "btnContinuar"
+    ).disabled = false;
+
+
+    document.getElementById(
+        "empleado"
+    ).focus();
+
+}
+
+
+// =====================================================
+// SEGURIDAD PARA MOSTRAR TEXTO
+// =====================================================
+
+function escaparHTML(texto) {
+
+    return String(texto)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+// =====================================================
+// ENTER PARA CONTINUAR
+// =====================================================
+
+document.getElementById(
+    "empleado"
+).addEventListener(
+    "keydown",
+    function(event) {
+
+        if (event.key === "Enter") {
+
+            buscarEmpleado();
+
+        }
+
+    }
+);
+
+
+</script>
+
+
+</body>
+
+</html>
