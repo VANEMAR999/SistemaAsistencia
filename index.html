@@ -559,12 +559,11 @@ async function tomarFoto() {
 
 
     // =================================================
-    // CREAR NOMBRE DE FOTO
+    // CREAR ARCHIVO REAL DE LA FOTO
     // =================================================
 
     const ahora =
         new Date();
-
 
     const año =
         ahora.getFullYear();
@@ -594,40 +593,97 @@ async function tomarFoto() {
             ahora.getSeconds()
         ).padStart(2, "0");
 
-
     const nombreFoto =
-
         empleadoActual.id +
-
         "_" +
-
         año +
-
         "-" +
-
         mes +
-
         "-" +
-
         dia +
-
         "_" +
-
         hora +
-
         minutos +
-
         segundos +
+        ".png";
 
-        ".jpg";
+    // Convertir el canvas en una imagen JPEG real
+    const blobFoto = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+            blob => blob ? resolve(blob) : reject(new Error("No se pudo crear la imagen.")),
+            "image/png",
+            0.85
+        );
+    });
 
+    // =================================================
+    // SUBIR FOTO A SUPABASE STORAGE
+    // =================================================
+
+    const rutaFoto =
+        empleadoActual.id + "/" + nombreFoto;
+
+    const { error: errorFoto } =
+        await supabaseClient
+            .storage
+            .from("fotos-asistencia")
+            .upload(
+                rutaFoto,
+                blobFoto,
+                {
+                    contentType: "image/png",
+                    upsert: false
+                }
+            );
+
+    if (errorFoto) {
+
+        console.error(
+            "Error al subir foto:",
+            errorFoto
+        );
+
+        document.getElementById(
+            "resultado"
+        ).innerHTML =
+
+            "<div class='error'>" +
+
+            "<strong>❌ No se pudo guardar la fotografía.</strong>" +
+
+            "<br><br>" +
+
+            errorFoto.message +
+
+            "<br><br>" +
+
+            "Verifica que exista el bucket 'asistencia-fotos' en Supabase Storage." +
+
+            "</div>";
+
+        boton.disabled = false;
+
+        boton.innerText =
+            "📸 Tomar fotografía";
+
+        return;
+    }
+
+    // Obtener URL pública de la fotografía
+    const { data: urlFoto } =
+        supabaseClient
+            .storage
+            .from("fotos-asistencia")
+            .getPublicUrl(rutaFoto);
+
+    const fotoURL =
+        urlFoto.publicUrl;
 
     // =================================================
     // GUARDAR REGISTRO EN ASISTENCIA
     // =================================================
 
-    const { data, error } =
-
+    const { error } =
         await supabaseClient
 
             .from("asistencia")
@@ -644,10 +700,9 @@ async function tomarFoto() {
                     new Date().toISOString(),
 
                 foto_url:
-                    nombreFoto
+                    fotoURL
 
             }]);
-
 
     // =================================================
     // ERROR
@@ -659,7 +714,6 @@ async function tomarFoto() {
             "Error al guardar:",
             error
         );
-
 
         document.getElementById(
             "resultado"
@@ -674,7 +728,6 @@ async function tomarFoto() {
             error.message +
 
             "</div>";
-
 
         boton.disabled = false;
 
