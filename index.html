@@ -239,11 +239,11 @@ async function buscarEmpleado() {
                 .from("empleados")
 
                 .select(
-                    "id, empleado_id, nombre, activo"
+                    "id, nombre, activo"
                 )
 
                 .eq(
-                    "empleado_id",
+                    "id",
                     empleado
                 )
 
@@ -338,7 +338,7 @@ async function buscarEmpleado() {
 
             "<strong>Número:</strong> " +
 
-            escaparHTML(data.empleado_id) +
+            escaparHTML(data.id) +
 
             "</p>" +
 
@@ -597,7 +597,7 @@ async function tomarFoto() {
 
     const nombreFoto =
 
-        empleadoActual.empleado_id +
+        empleadoActual.id +
 
         "_" +
 
@@ -635,7 +635,7 @@ async function tomarFoto() {
             .insert([{
 
                 empleado_id:
-                    empleadoActual.empleado_id,
+                    empleadoActual.id,
 
                 tipo:
                     "Entrada",
