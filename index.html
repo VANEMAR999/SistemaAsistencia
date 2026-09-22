@@ -65,6 +65,13 @@
             background: #444;
         }
 
+        .botones-tipo { display:flex; gap:10px; margin-top:10px; }
+        .botones-tipo button { flex:1; margin-top:0; }
+        .btn-entrada { background:#188038; }
+        .btn-salida { background:#c5221f; }
+        .btn-entrada:hover { background:#126b2d; }
+        .btn-salida:hover { background:#a61b19; }
+
         button:disabled {
             background: #999;
             cursor: not-allowed;
@@ -185,6 +192,8 @@ const supabaseClient =
 let empleadoActual = null;
 
 let streamActual = null;
+
+let tipoRegistro = null;
 
 
 // =====================================================
@@ -372,15 +381,12 @@ async function buscarEmpleado() {
 
             "<canvas id='canvas'></canvas>" +
 
-            "<button " +
+            "<p><strong>¿Qué deseas registrar?</strong></p>" +
 
-            "id='btnFoto' " +
-
-            "onclick='tomarFoto()'>" +
-
-            "📸 Tomar fotografía" +
-
-            "</button>";
+            "<div class='botones-tipo'>" +
+            "<button class='btn-entrada' onclick="seleccionarTipo('Entrada')">🟢 Entrada</button>" +
+            "<button class='btn-salida' onclick="seleccionarTipo('Salida')">🔴 Salida</button>" +
+            "</div>";
 
 
         // Abrir cámara
@@ -476,6 +482,25 @@ async function iniciarCamara() {
 
 
 // =====================================================
+// SELECCIONAR TIPO DE REGISTRO
+// =====================================================
+
+function seleccionarTipo(tipo) {
+
+    tipoRegistro = tipo;
+
+    const resultado = document.getElementById("resultado");
+
+    resultado.innerHTML +=
+        "<div class='cargando'>" +
+        "Registro seleccionado: <strong>" +
+        escaparHTML(tipo) +
+        "</strong><br>📸 Toma tu fotografía." +
+        "</div>" +
+        "<button id='btnFoto' onclick='tomarFoto()'>📸 Tomar fotografía</button>";
+}
+
+// =====================================================
 // TOMAR FOTOGRAFÍA
 // =====================================================
 
@@ -485,6 +510,15 @@ async function tomarFoto() {
 
         alert(
             "Primero busca un empleado."
+        );
+
+        return;
+    }
+
+    if (!tipoRegistro) {
+
+        alert(
+            "Primero selecciona Entrada o Salida."
         );
 
         return;
@@ -694,7 +728,7 @@ async function tomarFoto() {
                     empleadoActual.id,
 
                 tipo:
-                    "Entrada",
+                    tipoRegistro,
 
                 fecha_hora:
                     new Date().toISOString(),
@@ -837,6 +871,8 @@ function nuevoRegistro() {
 
 
     empleadoActual = null;
+
+    tipoRegistro = null;
 
 
     document.getElementById(
