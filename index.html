@@ -77,12 +77,6 @@
             cursor: not-allowed;
         }
 
-        /* Cámara sin efecto espejo */
-        video {
-            transform: scaleX(1) !important;
-            -webkit-transform: scaleX(1) !important;
-        }
-
         video {
             width: 100%;
             margin-top: 15px;
@@ -481,6 +475,15 @@
             }
         }
 
+    
+        /* Cámara frontal: vista previa sin efecto espejo */
+        video {
+            aspect-ratio: 3 / 4 !important;
+            object-fit: cover !important;
+            transform: scaleX(-1) !important;
+            -webkit-transform: scaleX(-1) !important;
+        }
+
     </style>
 
 </head>
@@ -804,10 +807,12 @@ async function iniciarCamara() {
                 });
 
 
-        // Mostrar cámara
-
-        video.srcObject =
-            streamActual;
+        // Mostrar cámara sin efecto espejo.
+        // La inversión es SOLO visual; la foto capturada desde el
+        // stream se guarda sin espejo.
+        video.srcObject = streamActual;
+        video.style.transform = "scaleX(-1)";
+        video.style.webkitTransform = "scaleX(-1)";
 
 
     } catch (error) {
