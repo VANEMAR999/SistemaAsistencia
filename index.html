@@ -1422,15 +1422,21 @@ async function cargarRegistros() {
     const contador = document.getElementById("contadorRegistros");
     body.innerHTML = "<tr><td colspan='6' class='sin-registros'>⏳ Cargando registros...</td></tr>";
 
-    const inicio = `${fecha}T00:00:00`;
-    const fin = new Date(`${fecha}T00:00:00`);
-    fin.setDate(fin.getDate()+1);
+    // Convertimos los límites de la fecha local a ISO/UTC porque
+    // fecha_hora en Supabase es timestamptz. Esto evita que se oculten
+    // registros por la diferencia de zona horaria (México/UTC).
+    const inicioLocal = new Date(`${fecha}T00:00:00`);
+    const finLocal = new Date(`${fecha}T00:00:00`);
+    finLocal.setDate(finLocal.getDate()+1);
+
+    const inicio = inicioLocal.toISOString();
+    const fin = finLocal.toISOString();
 
     const { data, error } = await supabaseClient
         .from("asistencia")
         .select("id, empleado_id, tipo, fecha_hora, foto_url")
         .gte("fecha_hora", inicio)
-        .lt("fecha_hora", fin.toISOString())
+        .lt("fecha_hora", fin)
         .order("fecha_hora", { ascending:false });
 
     if (error) {
