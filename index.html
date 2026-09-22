@@ -153,8 +153,8 @@
         }
 
         .contenedor {
-            width: min(100%, 480px);
-            max-width: 480px;
+            width: min(100%, 1100px);
+            max-width: 1100px;
             margin: 0 auto;
             background: rgba(255,255,255,.97);
             padding: 0 32px 24px;
@@ -441,6 +441,39 @@
             transform: scale(.99);
         }
 
+        /* ===== REGISTROS ===== */
+        .registros-panel {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--renova-border);
+        }
+        .registros-titulo {
+            display:flex; align-items:center; justify-content:space-between; gap:12px;
+            margin-bottom:16px;
+        }
+        .registros-titulo h2 { margin:0; font-size:22px; color:var(--renova-dark); }
+        .btn-actualizar {
+            width:auto; margin:0; padding:10px 14px; border-radius:10px;
+            background:var(--renova-dark); font-size:13px; font-weight:700;
+        }
+        .filtros-registros {
+            display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-bottom:14px;
+        }
+        .filtros-registros input, .filtros-registros select {
+            height:46px; padding:8px 12px; border:1px solid var(--renova-border);
+            border-radius:10px; background:#fafbfc; font-family:inherit; font-size:14px;
+        }
+        .tabla-wrap { overflow-x:auto; border:1px solid var(--renova-border); border-radius:12px; }
+        .tabla-registros { width:100%; border-collapse:collapse; min-width:650px; background:white; }
+        .tabla-registros th { background:#f4f6f8; color:#4b5563; font-size:12px; text-transform:uppercase; padding:11px 10px; text-align:left; }
+        .tabla-registros td { padding:11px 10px; border-top:1px solid #edf0f2; font-size:13px; }
+        .badge-entrada, .badge-salida { display:inline-block; padding:5px 9px; border-radius:999px; font-weight:700; font-size:12px; }
+        .badge-entrada { background:#e9f7ed; color:#176b17; }
+        .badge-salida { background:#fff0f0; color:#a00000; }
+        .btn-foto-registro { width:auto; margin:0; padding:7px 10px; border-radius:8px; background:#eef2f5; color:var(--renova-dark); font-size:12px; font-weight:700; }
+        .sin-registros { text-align:center; padding:24px; color:var(--renova-muted); }
+        .contador-registros { color:var(--renova-muted); font-size:12px; margin:8px 0 0; }
+
         @media (max-width: 520px) {
             body {
                 padding: 12px;
@@ -466,9 +499,11 @@
                 font-size: 25px;
             }
 
-            .botones-tipo {
-                gap: 8px;
-            }
+            .botones-tipo { gap: 8px; }
+
+            .filtros-registros { grid-template-columns: 1fr; }
+            .registros-titulo { align-items:flex-start; flex-direction:column; }
+            .btn-actualizar { width:100%; }
 
             .botones-tipo button {
                 font-size: 15px;
@@ -533,6 +568,37 @@
     </button>
 
     <div id="resultado"></div>
+
+    <section class="registros-panel">
+        <div class="registros-titulo">
+            <div>
+                <h2>📋 Registros de asistencia</h2>
+                <p class="contador-registros" id="contadorRegistros">Cargando registros de hoy...</p>
+            </div>
+            <button class="btn-actualizar" id="btnActualizarRegistros" onclick="cargarRegistros()">↻ Actualizar</button>
+        </div>
+
+        <div class="filtros-registros">
+            <input type="date" id="filtroFecha" onchange="cargarRegistros()">
+            <input type="text" id="filtroEmpleado" placeholder="Filtrar por usuario" oninput="filtrarTabla()">
+            <select id="filtroTipo" onchange="filtrarTabla()">
+                <option value="">Todos</option>
+                <option value="Entrada">Entradas</option>
+                <option value="Salida">Salidas</option>
+            </select>
+        </div>
+
+        <div class="tabla-wrap">
+            <table class="tabla-registros">
+                <thead>
+                    <tr><th>Usuario</th><th>Nombre</th><th>Tipo</th><th>Fecha</th><th>Hora</th><th>Foto</th></tr>
+                </thead>
+                <tbody id="tablaRegistrosBody">
+                    <tr><td colspan="6" class="sin-registros">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
     <div class="pie">
         <span>Asistencia RENOVA</span>
@@ -1264,6 +1330,102 @@ function nuevoRegistro() {
 
 
 // =====================================================
+// REGISTROS DE ASISTENCIA
+// =====================================================
+
+let registrosCargados = [];
+
+function fechaLocalISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+}
+
+async function cargarRegistros() {
+    const fechaInput = document.getElementById("filtroFecha");
+    const fecha = fechaInput.value || fechaLocalISO();
+    fechaInput.value = fecha;
+
+    const body = document.getElementById("tablaRegistrosBody");
+    const contador = document.getElementById("contadorRegistros");
+    body.innerHTML = "<tr><td colspan='6' class='sin-registros'>⏳ Cargando registros...</td></tr>";
+
+    const inicio = `${fecha}T00:00:00`;
+    const fin = new Date(`${fecha}T00:00:00`);
+    fin.setDate(fin.getDate()+1);
+
+    const { data, error } = await supabaseClient
+        .from("asistencia")
+        .select("id, empleado_id, tipo, fecha_hora, foto_url")
+        .gte("fecha_hora", inicio)
+        .lt("fecha_hora", fin.toISOString())
+        .order("fecha_hora", { ascending:false });
+
+    if (error) {
+        console.error("Error al cargar registros:", error);
+        body.innerHTML = `<tr><td colspan="6" class="sin-registros">❌ No se pudieron consultar los registros.<br><small>${escaparHTML(error.message)}</small></td></tr>`;
+        contador.textContent = "Error al consultar";
+        return;
+    }
+
+    registrosCargados = data || [];
+
+    // Obtener nombres sin depender de una relación de Supabase.
+    if (registrosCargados.length) {
+        const ids = [...new Set(registrosCargados.map(r => r.empleado_id))];
+        const { data: empleadosData } = await supabaseClient
+            .from("empleados")
+            .select("id, nombre")
+            .in("id", ids);
+        const nombres = Object.fromEntries((empleadosData || []).map(e => [e.id, e.nombre]));
+        registrosCargados = registrosCargados.map(r => ({...r, nombre: nombres[r.empleado_id] || "—"}));
+    }
+
+    contador.textContent = `${registrosCargados.length} registro${registrosCargados.length === 1 ? "" : "s"} encontrado${registrosCargados.length === 1 ? "" : "s"}`;
+    filtrarTabla();
+}
+
+function filtrarTabla() {
+    const texto = (document.getElementById("filtroEmpleado")?.value || "").trim().toUpperCase();
+    const tipo = document.getElementById("filtroTipo")?.value || "";
+    const body = document.getElementById("tablaRegistrosBody");
+
+    const lista = registrosCargados.filter(r => {
+        const coincideEmpleado = !texto || String(r.empleado_id).toUpperCase().includes(texto) || String(r.nombre).toUpperCase().includes(texto);
+        const coincideTipo = !tipo || r.tipo === tipo;
+        return coincideEmpleado && coincideTipo;
+    });
+
+    if (!lista.length) {
+        body.innerHTML = "<tr><td colspan='6' class='sin-registros'>No hay registros que coincidan con los filtros.</td></tr>";
+        return;
+    }
+
+    body.innerHTML = lista.map(r => {
+        const d = new Date(r.fecha_hora);
+        const fecha = d.toLocaleDateString("es-MX");
+        const hora = d.toLocaleTimeString("es-MX", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+        const badge = r.tipo === "Entrada" ? "badge-entrada" : "badge-salida";
+        const foto = r.foto_url ? `<button class="btn-foto-registro" onclick="verFoto('${encodeURIComponent(r.foto_url)}')">📷 Ver</button>` : "—";
+        return `<tr>
+            <td><strong>${escaparHTML(r.empleado_id)}</strong></td>
+            <td>${escaparHTML(r.nombre)}</td>
+            <td><span class="${badge}">${escaparHTML(r.tipo)}</span></td>
+            <td>${fecha}</td>
+            <td>${hora}</td>
+            <td>${foto}</td>
+        </tr>`;
+    }).join("");
+}
+
+function verFoto(urlCodificada) {
+    const url = decodeURIComponent(urlCodificada);
+    window.open(url, "_blank", "noopener,noreferrer");
+}
+
+// =====================================================
 // SEGURIDAD PARA MOSTRAR TEXTO
 // =====================================================
 
@@ -1282,6 +1444,9 @@ function escaparHTML(texto) {
 // =====================================================
 // ENTER PARA CONTINUAR
 // =====================================================
+
+document.getElementById("filtroFecha").value = fechaLocalISO();
+cargarRegistros();
 
 document.getElementById(
     "empleado"
