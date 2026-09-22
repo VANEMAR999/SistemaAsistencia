@@ -12,6 +12,7 @@
 
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
 
@@ -478,6 +479,12 @@
             margin-bottom:16px;
         }
         .registros-titulo h2 { margin:0; font-size:22px; color:var(--renova-dark); }
+        .btn-descargar {
+            width:auto; margin:0; padding:10px 14px; border-radius:10px;
+            background:var(--renova-green); font-size:13px; font-weight:700;
+        }
+        .btn-descargar:hover { background:var(--renova-green-dark); }
+
         .btn-actualizar {
             width:auto; margin:0; padding:10px 14px; border-radius:10px;
             background:var(--renova-dark); font-size:13px; font-weight:700;
@@ -529,7 +536,7 @@
 
             .filtros-registros { grid-template-columns: 1fr; }
             .registros-titulo { align-items:flex-start; flex-direction:column; }
-            .btn-actualizar, .btn-cerrar-admin { width:100%; }
+            .btn-actualizar, .btn-descargar, .btn-cerrar-admin { width:100%; }
             .admin-acciones { width:100%; flex-direction:column; }
 
             .botones-tipo button {
@@ -608,6 +615,7 @@
             </div>
             <div class="admin-acciones">
                 <button class="btn-actualizar" id="btnActualizarRegistros" onclick="cargarRegistros()">↻ Actualizar</button>
+                <button class="btn-descargar" id="btnDescargarExcel" onclick="descargarExcel()">📥 Excel</button>
                 <button class="btn-cerrar-admin" onclick="cerrarAdmin()">🔒 Cerrar</button>
             </div>
         </div>
@@ -1494,6 +1502,80 @@ function filtrarTabla() {
             <td>${foto}</td>
         </tr>`;
     }).join("");
+}
+
+
+// =====================================================
+// DESCARGAR REGISTROS EN EXCEL
+// Exporta exactamente los registros que están visibles
+// después de aplicar los filtros de usuario y tipo.
+// =====================================================
+
+function descargarExcel() {
+    if (!accesoAdmin) {
+        alert("❌ Debes ingresar al acceso administrativo.");
+        return;
+    }
+
+    const texto = (document.getElementById("filtroEmpleado")?.value || "").trim().toUpperCase();
+    const tipo = document.getElementById("filtroTipo")?.value || "";
+    const fechaSeleccionada = document.getElementById("filtroFecha")?.value || fechaLocalISO();
+
+    const lista = registrosCargados.filter(r => {
+        const coincideEmpleado =
+            !texto ||
+            String(r.empleado_id).toUpperCase().includes(texto) ||
+            String(r.nombre).toUpperCase().includes(texto);
+
+        const coincideTipo = !tipo || r.tipo === tipo;
+
+        return coincideEmpleado && coincideTipo;
+    });
+
+    if (!lista.length) {
+        alert("⚠️ No hay registros para descargar con los filtros actuales.");
+        return;
+    }
+
+    const datosExcel = lista.map(r => {
+        const d = new Date(r.fecha_hora);
+
+        return {
+            "Usuario": r.empleado_id || "",
+            "Nombre": r.nombre || "",
+            "Tipo": r.tipo || "",
+            "Fecha": d.toLocaleDateString("es-MX"),
+            "Hora": d.toLocaleTimeString("es-MX", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            }),
+            "Foto": r.foto_url || ""
+        };
+    });
+
+    const hoja = XLSX.utils.json_to_sheet(datosExcel);
+
+    // Ancho de columnas para que el reporte sea más cómodo de leer.
+    hoja["!cols"] = [
+        { wch: 14 },
+        { wch: 30 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 70 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Asistencia");
+
+    const fechaArchivo = fechaSeleccionada.replace(/-/g, "_");
+    const nombreTipo = tipo ? "_" + tipo.toLowerCase() : "";
+
+    XLSX.writeFile(
+        libro,
+        `Reporte_Asistencia_${fechaArchivo}${nombreTipo}.xlsx`
+    );
 }
 
 function verFoto(urlCodificada) {
