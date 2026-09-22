@@ -491,7 +491,9 @@ function seleccionarTipo(tipo) {
 
     const resultado = document.getElementById("resultado");
 
-    resultado.innerHTML +=
+    // Reemplazar el contenido anterior para que no se acumulen
+    // varios mensajes ni varios botones de fotografía.
+    resultado.innerHTML =
         "<div class='cargando'>" +
         "Registro seleccionado: <strong>" +
         escaparHTML(tipo) +
@@ -813,7 +815,7 @@ async function tomarFoto() {
 
         "<p>" +
 
-        "<strong>Tipo:</strong> Entrada" +
+        "<strong>Tipo:</strong> " + escaparHTML(tipoRegistro) +
 
         "</p>" +
 
