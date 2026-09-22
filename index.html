@@ -441,6 +441,32 @@
             transform: scale(.99);
         }
 
+        /* ===== ACCESO ADMINISTRATIVO ===== */
+        .admin-acceso {
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid var(--renova-border);
+            text-align: center;
+        }
+        .btn-admin {
+            width: auto;
+            display: inline-block;
+            margin: 0;
+            padding: 11px 18px;
+            border-radius: 10px;
+            background: #f4f6f8;
+            color: var(--renova-dark);
+            border: 1px solid var(--renova-border);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .btn-admin:hover { background: #e9edf0; }
+        .admin-acciones { display:flex; gap:8px; }
+        .btn-cerrar-admin {
+            width:auto; margin:0; padding:10px 14px; border-radius:10px;
+            background:#7b8791; font-size:13px; font-weight:700;
+        }
+
         /* ===== REGISTROS ===== */
         .registros-panel {
             margin-top: 28px;
@@ -503,7 +529,8 @@
 
             .filtros-registros { grid-template-columns: 1fr; }
             .registros-titulo { align-items:flex-start; flex-direction:column; }
-            .btn-actualizar { width:100%; }
+            .btn-actualizar, .btn-cerrar-admin { width:100%; }
+            .admin-acciones { width:100%; flex-direction:column; }
 
             .botones-tipo button {
                 font-size: 15px;
@@ -569,13 +596,20 @@
 
     <div id="resultado"></div>
 
-    <section class="registros-panel">
+    <section class="admin-acceso">
+        <button class="btn-admin" onclick="abrirAccesoAdmin()">🔐 Acceso administrativo</button>
+    </section>
+
+    <section class="registros-panel" id="registrosPanel" style="display:none;">
         <div class="registros-titulo">
             <div>
                 <h2>📋 Registros de asistencia</h2>
-                <p class="contador-registros" id="contadorRegistros">Cargando registros de hoy...</p>
+                <p class="contador-registros" id="contadorRegistros">Selecciona una fecha</p>
             </div>
-            <button class="btn-actualizar" id="btnActualizarRegistros" onclick="cargarRegistros()">↻ Actualizar</button>
+            <div class="admin-acciones">
+                <button class="btn-actualizar" id="btnActualizarRegistros" onclick="cargarRegistros()">↻ Actualizar</button>
+                <button class="btn-cerrar-admin" onclick="cerrarAdmin()">🔒 Cerrar</button>
+            </div>
         </div>
 
         <div class="filtros-registros">
@@ -594,7 +628,7 @@
                     <tr><th>Usuario</th><th>Nombre</th><th>Tipo</th><th>Fecha</th><th>Hora</th><th>Foto</th></tr>
                 </thead>
                 <tbody id="tablaRegistrosBody">
-                    <tr><td colspan="6" class="sin-registros">Cargando...</td></tr>
+                    <tr><td colspan="6" class="sin-registros">Selecciona acceso administrativo.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1330,6 +1364,40 @@ function nuevoRegistro() {
 
 
 // =====================================================
+// ACCESO ADMINISTRATIVO
+// =====================================================
+
+// Cambia esta clave si quieres utilizar otra.
+// IMPORTANTE: esta protección es de interfaz; para seguridad real
+// se recomienda implementar autenticación de Supabase.
+const CLAVE_ADMIN = "RENOVA2026";
+let accesoAdmin = false;
+
+function abrirAccesoAdmin() {
+    const clave = prompt("Ingresa la clave de administrador:");
+
+    if (clave === null) return;
+
+    if (clave !== CLAVE_ADMIN) {
+        alert("❌ Clave incorrecta.");
+        return;
+    }
+
+    accesoAdmin = true;
+    document.getElementById("registrosPanel").style.display = "block";
+    document.getElementById("filtroFecha").value = fechaLocalISO();
+    cargarRegistros();
+}
+
+function cerrarAdmin() {
+    accesoAdmin = false;
+    document.getElementById("registrosPanel").style.display = "none";
+    document.getElementById("filtroEmpleado").value = "";
+    document.getElementById("filtroTipo").value = "";
+    registrosCargados = [];
+}
+
+// =====================================================
 // REGISTROS DE ASISTENCIA
 // =====================================================
 
@@ -1344,6 +1412,8 @@ function fechaLocalISO() {
 }
 
 async function cargarRegistros() {
+    if (!accesoAdmin) return;
+
     const fechaInput = document.getElementById("filtroFecha");
     const fecha = fechaInput.value || fechaLocalISO();
     fechaInput.value = fecha;
@@ -1444,9 +1514,6 @@ function escaparHTML(texto) {
 // =====================================================
 // ENTER PARA CONTINUAR
 // =====================================================
-
-document.getElementById("filtroFecha").value = fechaLocalISO();
-cargarRegistros();
 
 document.getElementById(
     "empleado"
