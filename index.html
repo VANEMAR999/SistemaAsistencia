@@ -138,7 +138,7 @@
     <h1>Registro de Asistencia</h1>
 
     <p>
-        Ingresa tu código de empleado
+        Ingresa tu nombre de usuario
     </p>
 
     <input
@@ -335,17 +335,18 @@ async function buscarEmpleado() {
         empleadoActual = data;
 
 
-        // Mostrar empleado
+        // Mostrar usuario encontrado.
+        // La cámara todavía NO se abre: primero debe seleccionar Entrada o Salida.
 
         resultado.innerHTML =
 
             "<div class='empleado-info'>" +
 
-            "<h3>✅ Empleado encontrado</h3>" +
+            "<h3>✅ Usuario encontrado</h3>" +
 
             "<p>" +
 
-            "<strong>Número:</strong> " +
+            "<strong>Usuario:</strong> " +
 
             escaparHTML(data.id) +
 
@@ -359,39 +360,16 @@ async function buscarEmpleado() {
 
             "</p>" +
 
-            "<p>" +
-
-            "📸 Colócate frente a la cámara " +
-
-            "y toma tu fotografía." +
-
-            "</p>" +
-
             "</div>" +
-
-            "<video " +
-
-            "id='video' " +
-
-            "autoplay " +
-
-            "playsinline>" +
-
-            "</video>" +
-
-            "<canvas id='canvas'></canvas>" +
 
             "<p><strong>¿Qué deseas registrar?</strong></p>" +
 
             "<div class='botones-tipo'>" +
             "<button class='btn-entrada' onclick='seleccionarTipo(\"Entrada\")'>🟢 Entrada</button>" +
             "<button class='btn-salida' onclick='seleccionarTipo(\"Salida\")'>🔴 Salida</button>" +
-            "</div>";
+            "</div>" +
 
-
-        // Abrir cámara
-
-        await iniciarCamara();
+            "<div id='accionesRegistro'></div>";
 
 
     } catch (error) {
@@ -489,17 +467,29 @@ function seleccionarTipo(tipo) {
 
     tipoRegistro = tipo;
 
-    const resultado = document.getElementById("resultado");
+    const acciones = document.getElementById("accionesRegistro");
 
-    // Reemplazar el contenido anterior para que no se acumulen
-    // varios mensajes ni varios botones de fotografía.
-    resultado.innerHTML =
+    if (!acciones) {
+        console.error("No existe accionesRegistro");
+        return;
+    }
+
+    acciones.innerHTML =
         "<div class='cargando'>" +
         "Registro seleccionado: <strong>" +
         escaparHTML(tipo) +
-        "</strong><br>📸 Toma tu fotografía." +
+        "</strong>" +
         "</div>" +
-        "<button id='btnFoto' onclick='tomarFoto()'>📸 Tomar fotografía</button>";
+
+        "<video id='video' autoplay playsinline></video>" +
+        "<canvas id='canvas'></canvas>" +
+
+        "<button id='btnFoto' onclick='tomarFoto()'>" +
+        "📸 Tomar fotografía" +
+        "</button>";
+
+    // La cámara se inicia DESPUÉS de elegir Entrada/Salida.
+    iniciarCamara();
 }
 
 // =====================================================
@@ -693,7 +683,7 @@ async function tomarFoto() {
 
             "<br><br>" +
 
-            "Verifica que exista el bucket 'asistencia-fotos' en Supabase Storage." +
+            "Verifica que exista el bucket 'fotos-asistencia' en Supabase Storage." +
 
             "</div>";
 
@@ -780,6 +770,8 @@ async function tomarFoto() {
 
     detenerCamara();
 
+    // Usar el mismo momento que se guardó en Supabase.
+    const fechaRegistro = new Date().toLocaleString("es-MX");
 
     // =================================================
     // MOSTRAR ÉXITO
@@ -791,41 +783,28 @@ async function tomarFoto() {
 
         "<div class='exito'>" +
 
-        "<h3>✅ Asistencia registrada</h3>" +
+        "<h3>✅ " + escaparHTML(tipoRegistro) +
+        " registrada</h3>" +
 
-        "<p>" +
+        "<p style='font-size:20px; margin-bottom:8px;'>" +
 
-        "<strong>Empleado:</strong><br>" +
-
-        escaparHTML(
-            empleadoActual.nombre
-        ) +
-
-        "</p>" +
-
-        "<p>" +
-
-        "<strong>Número:</strong> " +
-
-        escaparHTML(
-            empleadoActual.id
-        ) +
+        "<strong>" +
+        escaparHTML(empleadoActual.nombre) +
+        "</strong>" +
 
         "</p>" +
 
         "<p>" +
 
-        "<strong>Tipo:</strong> " + escaparHTML(tipoRegistro) +
+        "Usuario: <strong>" +
+        escaparHTML(empleadoActual.id) +
+        "</strong>" +
 
         "</p>" +
 
         "<p>" +
 
-        "<strong>Fecha y hora:</strong><br>" +
-
-        new Date().toLocaleString(
-            "es-MX"
-        ) +
+        "📅 " + escaparHTML(fechaRegistro) +
 
         "</p>" +
 
